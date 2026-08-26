@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This repo is a source/authoring location for Claude Code skills and agents (see `README.md` for the workflow they form together). It is not itself a plugin and is not auto-loaded by Claude Code — pieces get copied or symlinked into `~/.claude/` or a target project's `.claude/`.
+This repo is a source/authoring location for Claude Code skills and agents (see `README.md` for the workflow they form together). It is not itself a plugin and is not auto-loaded by Claude Code — `install.sh` copies its skills and agents into `~/.claude/` (or a project's `.claude/`). After editing a skill or agent here, that copy is stale until the script is re-run; `./install.sh --dry-run` shows what has drifted.
 
 ## Conventions
 

@@ -21,9 +21,16 @@ feature-brainstorm  →  rfc-writer            →  spec-tdd-codegen / tdd-enfor
 
 This repo has no plugin packaging (no `.claude-plugin/`) — it's a source/authoring location, not something Claude Code loads automatically from here.
 
-## Using these elsewhere
+## Installing
 
-Copy or symlink what you need into Claude Code's discovery paths:
+Claude Code doesn't load from this repo directly — skills and agents have to live under a `.claude/` directory. `install.sh` copies them there:
 
-- Skills: a skill folder → `~/.claude/skills/<skill-name>/` (all sessions) or `<project>/.claude/skills/<skill-name>/` (one project).
-- Agents: an agent file → `~/.claude/agents/<name>.md` (all sessions) or `<project>/.claude/agents/<name>.md` (one project).
+```sh
+./install.sh --dry-run          # show what would change
+./install.sh                    # sync into ~/.claude (all sessions)
+./install.sh --target .claude   # sync into a project-local .claude/
+```
+
+This repo is the source of truth: anything it defines overwrites the target copy. Skills and agents in the target that this repo doesn't define are left alone. Because these are copies rather than symlinks, the target can drift — re-run the script (or `--dry-run` to check) after editing anything here.
+
+Destinations, if you'd rather do it by hand: skill folder → `<target>/skills/<skill-name>/`, agent file → `<target>/agents/<name>.md`.
