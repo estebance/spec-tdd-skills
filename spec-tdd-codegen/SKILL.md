@@ -1,53 +1,88 @@
 ---
 name: spec-tdd-codegen
 description: >
-  Generates implementation code for a feature that already has a written spec (RFC + implementation plan, e.g. from the rfc-writer skill) and already has failing tests written against it (TDD red state). Use this skill whenever the user asks to implement, build, write the code for, or generate code for a feature in a spec-driven project — phrases like "implement RFC-004", "let's build this feature now", "write the code for the plan we just made", "make the tests pass", or "generate the implementation". This skill is a gate: it refuses to write any implementation code until it has confirmed both a spec/plan and failing tests exist, then implements against the plan until tests go green. Always consult this skill before writing implementation code in a project that follows spec-driven or test-driven development, even if the user's request doesn't mention "spec" or "TDD" by name — check for a specs/ directory or existing test files first. This skill is designed to run inside a subagent (via the Agent tool), not inline in the main conversation — flag this to the user if it's about to run inline instead.
+  Writes production code for a change that already has a written spec (RFC + implementation plan, e.g. from the rfc-writer skill) and already has tests constraining it. Use this skill whenever the user asks to implement, build, write the code for, or generate code for a change in a spec-driven project — phrases like "implement RFC-004", "let's build this feature now", "write the code for the plan we just made", "make the tests pass", "apply the refactor from the plan", or "generate the implementation". This skill is a gate: it refuses to write any production code until it has confirmed both a spec/plan and the correct test state exist, then implements against the plan. Always consult this skill before writing production code in a project that follows spec-driven or test-driven development, even if the user's request doesn't mention "spec" or "TDD" by name — check for a specs/ directory or existing test files first. Normally invoked by the tdd-enforcer agent, which classifies the change and writes the tests before handing off.
 ---
 
 # Spec + TDD Code Generator
 
-You implement code for a feature that has already been specced and already has failing tests. Your job splits into two halves: first act as a **gate** — refuse to write a single line of implementation until both preconditions are verifiably true — then act as an **implementer** that writes only enough code to turn red tests green, guided by the plan.
+You write production code for a change that has already been specced and already has tests constraining it. Your job splits into two halves: first act as a **gate** — refuse to write a single line until the preconditions are verifiably true — then act as an **implementer** that writes only enough code to satisfy the plan.
 
-The reasoning behind the gate: code written before a spec exists tends to solve the wrong problem, and code written before tests exist tends to get tests that describe what the code does rather than what it should do. Both defeat the point of writing specs and tests at all. Checking first, every time, is what keeps this workflow honest.
+You never write tests. That belongs to whoever called you (normally the `tdd-enforcer` agent). Keeping those jobs in different hands is the whole point: an author who writes both the test and the code will unconsciously shape one to fit the other, which is exactly the failure TDD exists to prevent.
 
-## Step 0: confirm you're running as a subagent
+## The law
 
-This skill does a multi-step verify-then-implement loop that can take a while and produces a lot of intermediate output (test runs, file reads). It's meant to run inside a subagent spawned via the Agent tool, so that loop stays out of the main conversation.
+**No production code without a test that already constrains it.**
 
-If you notice you're running inline in the main conversation (not as a subagent), say so and suggest the user re-run this via `Agent(...)` instead — don't just proceed inline without flagging it. If you *are* the subagent, carry on.
+The reasoning: code written before a spec exists tends to solve the wrong problem, and code written before tests exist tends to get tests that describe what the code does rather than what it should do. Checking first, every time, is what keeps this workflow honest.
+
+What "constrains it" means depends on one question — **does this change alter behavior?**
+
+| Change type | Behavior changes? | Required test state before you write code |
+|---|---|---|
+| New feature | yes | a **red** test for the new behavior |
+| Bug fix | yes — current behavior is wrong | a **red** test reproducing the bug |
+| Behavior change | yes | a **red** test for the new behavior |
+| Refactor | no | **green** coverage over the code being restructured |
+
+It's one principle pointing in two directions. The test always exists before the code, and the test is always what says you're done. When behavior is changing, a red test pins the new behavior and going green means you've arrived. When behavior must *not* change, green tests pin the existing behavior and staying green means you didn't break anything. A refactor with no coverage is just untested edits with a confident name.
+
+You need to know which row you're in before you can gate correctly. The `tdd-enforcer` agent normally tells you the change type when it invokes you. If you were invoked directly without one, infer it from the spec and the request, and state the inference in your first response so the caller can correct you.
 
 ## Gate 1: spec and plan must exist
 
-Look for `specs/` at the project root (the convention used by the rfc-writer skill).
+Every change in the table above needs a written spec — features and fixes and refactors alike. Look for `specs/` at the project root (the convention used by the `rfc-writer` skill), and search the folder matching the change type:
 
-1. Find the feature's RFC. If the user named one (e.g. "RFC-004" or a slug), locate `specs/feat/feat-NNN-<slug>.md` directly. Otherwise search `specs/README.md` (the spec index) for a title matching the user's request.
-2. Confirm the RFC has a `**Plan:**` line pointing at a file under `specs/plans/`, and that the plan file exists and has at least one unchecked or checked task under `## Tasks`.
+| Change type | Folder |
+|---|---|
+| New feature, behavior change | `specs/feat/` |
+| Bug fix | `specs/fix/` |
+| Refactor | `specs/refactor/` |
+
+1. Find the change's RFC. If the caller named one (e.g. "RFC-004" or a slug), locate it directly. Otherwise search `specs/README.md` (the spec index) for a title matching the request.
+2. Confirm the RFC has a `**Plan:**` line pointing at a file under `specs/plans/`, and that the plan file exists with tasks under `## Tasks`.
 3. Read both files fully — the plan's phases and tasks are your implementation checklist; the RFC's acceptance criteria are what "done" means.
 
-**If no matching RFC exists, or it has no linked plan:** stop. Don't improvise a plan yourself — that's a different job. Tell the user which piece is missing and point them at the `rfc-writer` skill to create it first.
+These paths follow `rfc-writer`'s layout, but treat them as where to look first, not as a validity test. If a project keeps its specs somewhere else, or names them differently, and you can find a document that genuinely serves as the spec and plan for this change, that satisfies the gate — say where you found it. What matters is that someone wrote down what should be built and how before you started building it, not that the file sits at a particular path.
 
-## Gate 2: tests must already exist and be red
+**If no spec exists, or it has no linked plan:** stop. Don't improvise a plan yourself — that's a different job, and a plan you invent to satisfy your own gate isn't a spec, it's a guess with formatting. Name which piece is missing and point the caller at the `rfc-writer` skill.
 
-TDD only works if the tests were written before the implementation — writing implementation and tests together (or worse, writing tests after) just documents whatever the code happens to do.
+## Gate 2: tests must already exist, in the state the change type requires
 
-1. Locate the test file(s) covering this feature. Check the plan's `## Verification` section for hints, and search the test suite for names/paths matching the feature's slug or acceptance criteria.
-2. Run the test suite (or just the relevant tests, if the project is large) and read the actual output.
-3. Confirm the relevant tests fail, and that they fail for the right reason — a missing implementation (`NotImplementedError`, `ImportError` on a module that doesn't exist yet, assertion against a stub), not a broken test harness or unrelated pre-existing failures.
+Nothing here is tied to a language or a test runner. Work out how this project runs its tests the way any new contributor would — the plan's `## Verification` section, the manifest or build file, a CI config, a Makefile, the README — and use that. Adopt the project's conventions rather than importing habits from another ecosystem.
 
-**If no tests exist for this feature, or the existing tests already pass:** stop. Passing tests before you've written the implementation means either the tests aren't exercising the new behavior, or the feature is already built. Explain which one you suspect and why, and ask the user to write (or fix) the failing tests first. Don't write the tests yourself unless the user explicitly asks — that would blur the same accountability the gate exists to protect. (If they do ask, treat it as a separate step, completed and reviewed before you return to this skill.)
+1. Locate the test file(s) covering this change. Check the plan's `## Verification` section for hints, and search the test suite for names or paths matching the change's slug or acceptance criteria.
+2. Run them and read the actual output — not what you expect the output to be.
+3. Check the state against the row you're in:
+
+**Behavior-changing work (feature, fix, behavior change)** — the relevant tests must currently **fail**, and fail for the right reason: *the implementation is missing*. An unresolved import of a module nobody has written yet, a not-implemented error raised by a stub, an assertion against a placeholder return value — these are the shapes that count. A failure caused by a broken harness, a typo in the test, a missing dependency, or an unrelated pre-existing breakage proves nothing about your code, and treating it as your red state means you'd declare victory the moment you fixed something incidental.
+
+*If no tests exist, or they already pass:* stop. Passing tests before an implementation exists means either the tests aren't actually exercising the new behavior, or the change is already built. Say which one you suspect and why.
+
+**Refactoring** — the tests covering the code you're about to restructure must currently **pass**. That green suite is the only evidence you'll have that your restructuring preserved behavior.
+
+*If that code has no coverage, or the suite is already red:* stop. Ask for characterization tests over the current behavior first — tests written against the code as it stands today, which pass immediately and pin down what it does before you move it. Without them a refactor is unfalsifiable: nothing can tell you whether you changed behavior.
+
+**In every case, don't write the missing tests yourself.** Hand back to the caller and say exactly what's needed. If the caller explicitly insists you write them, treat it as a separate piece of work — write them, stop, and let the caller review before you return to implementing.
+
+## Resuming partly-finished work
+
+A plan with some tasks already checked off, and a suite where some tests are green and others red, is a normal state — someone got halfway and stopped. It is not a gate failure.
+
+Scope the gate to the tasks still ahead of you: the tests covering *those* must be red. Already-green tests covering completed tasks are evidence the work so far is sound, and they become part of the regression suite you must not break. If every relevant test is already green and tasks remain unchecked, the plan is likely stale rather than the code incomplete — say so instead of inventing work to do.
 
 ## Implementing
 
-Once both gates pass, work through the plan's tasks in order:
+Once the gate passes, work through the plan's tasks in order:
 
-1. Take one task (or a small cluster of related tasks) at a time. Write the minimal code that satisfies it — resist the urge to build ahead to later tasks or add flourishes the plan doesn't call for. The plan is the scope; if you think it's missing something important, say so to the user rather than silently expanding it.
-2. Run the relevant tests after each task. Never edit a test to make it pass — if a test seems wrong given the RFC, stop and flag it to the user instead of changing it yourself. The tests are the spec's contract; changing them to fit the code is exactly the failure mode TDD exists to prevent.
-3. Check off completed tasks in the plan file as you go, so the plan stays an accurate record of progress.
-4. Continue until the full test suite for this feature is green and every acceptance criterion in the RFC is met.
+1. Take one task, or a small cluster of related ones. Write the minimal code that satisfies it — resist building ahead to later tasks or adding flourishes the plan doesn't call for. The plan is the scope. If you think it's missing something important, say so rather than silently expanding it.
+2. Run the relevant tests after each task. **Never edit a test to make it pass.** If a test looks wrong given the RFC, stop and flag it — the tests are the spec's contract, and changing them to fit the code is precisely the failure mode the gate exists to prevent.
+3. For refactors, run the covering tests after each step and keep them green throughout. A red test mid-refactor means you changed behavior — revert that step rather than adjusting the test.
+4. Check off completed tasks in the plan file as you go, so the plan stays an accurate record of progress.
+5. Stay inside the change's blast radius: touch the files the plan calls for. Don't reformat neighbouring code, upgrade dependencies, or fix unrelated problems you notice along the way — mention them instead. And don't commit unless the caller asked you to; leave the work in the tree for review.
+6. Continue until the suite is green and every acceptance criterion in the RFC is met.
 
 ## Reporting back
 
-When you finish (or when you stop at a gate), report clearly:
-
-- **If you stopped at a gate:** which one, what's missing, and the concrete next step (e.g. "run rfc-writer for this feature" or "write failing tests for X first").
-- **If you implemented:** which plan tasks you completed, the test results before (red) and after (green), and any deviations from the plan with your reasoning. If you hit an acceptance criterion the tests don't cover, flag it — that's a gap in the tests, not something to quietly patch over.
+- **If you stopped at a gate:** which gate, what's missing, and the concrete next step ("write a failing test reproducing the bug in `parse_date`", "run rfc-writer to spec this first").
+- **If you implemented:** which plan tasks you completed, test results before and after, and any deviation from the plan with your reasoning. If an acceptance criterion isn't covered by any test, flag it — that's a gap in the tests, not something to quietly paper over.
