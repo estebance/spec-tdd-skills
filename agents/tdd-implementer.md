@@ -2,9 +2,6 @@
 name: tdd-implementer
 description: Conducts the whole test-driven implementation cycle for a change that already has a written spec. Use this agent whenever the user asks to implement, build, ship, or apply a feature, bug fix, improvement, behavior change, or refactor from a spec or RFC — phrases like "implement RFC-004", "build the feature we specced", "apply the plan", "let's do this fix now", or handing over a spec to be built. It locates the spec, gets the constraining tests written first in a separate context (via the tdd-test-writer skill), implements against the plan via the spec-tdd-codegen skill, then finishes green with a refactor pass and reports the test output. It never authors the tests and the production code in the same context.
 tools: Read, Write, Edit, Bash, Glob, Grep, Skill, Agent
-skills:
-  - spec-tdd-codegen
-  - tdd-test-writer
 model: sonnet
 ---
 
