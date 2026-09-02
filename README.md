@@ -5,14 +5,20 @@ A personal collection of Claude Code skills and agents for spec-driven, test-dri
 ## Workflow
 
 ```
-feature-brainstorm  →  rfc-writer            →  spec-tdd-codegen / tdd-enforcer
-(explore the idea)     (write RFC + plan)       (write failing tests, then implement)
+feature-brainstorm  →  rfc-writer  →  tdd-implementer
+(explore the idea)     (write RFC     (conduct the cycle:
+                         + plan)       tdd-test-writer in a separate
+                                       context, then spec-tdd-codegen,
+                                       then green + refactor)
 ```
 
-- **feature-brainstorm** (skill) — open-ended exploration of a problem or idea before anything gets specced. Stays conversational, produces no files.
+- **feature-brainstorm** (skill) — open-ended exploration of a problem or idea before anything gets specced. Stays conversational and writes no files, but closes with a *brainstorm brief* in the chat (direction chosen, alternatives rejected and why, constraints, open questions) whose sections line up with the fields `rfc-writer` interviews for.
 - **rfc-writer** (skill) — turns a chosen direction into a written RFC under `specs/`, plus a linked implementation plan for feature work.
-- **spec-tdd-codegen** (skill) — gated implementation: refuses to write code until a spec/plan exists (from `rfc-writer`) and failing tests already exist for it, then implements just enough to go green. Designed to run as a subagent.
-- **tdd-enforcer** (agent) — enforces red-green-refactor directly: writes a failing test first, then delegates implementation to `spec-tdd-codegen` rather than writing code itself.
+- **tdd-implementer** (agent) — the entry point for building anything that's been specced. Finds the spec, gets the constraining tests written in a context that isn't its own, implements against the plan, and lands it green with a refactor pass. It owns the sequence, not any single beat of it.
+- **tdd-test-writer** (skill) — classifies the change, confirms the spec exists, and writes the failing (or characterization) test that will constrain the implementation, then reports back. Belongs in a context separate from the one writing the code — usually a `general-purpose` subagent, spawned by `tdd-implementer` or directly by Claude.
+- **spec-tdd-codegen** (skill) — gated implementation: refuses to write code until a spec exists (from `rfc-writer`) and the tests are in the right state, then implements just enough to satisfy the plan.
+
+The two implementation skills are deliberately caller-agnostic — `tdd-implementer` is the normal way to run them in the right order, but either can be invoked on its own, or from a subagent Claude spawns itself.
 
 ## Layout
 
@@ -32,5 +38,7 @@ Claude Code doesn't load from this repo directly — skills and agents have to l
 ```
 
 This repo is the source of truth: anything it defines overwrites the target copy. Skills and agents in the target that this repo doesn't define are left alone. Because these are copies rather than symlinks, the target can drift — re-run the script (or `--dry-run` to check) after editing anything here.
+
+**Renames need a manual cleanup.** Since the script never deletes, renaming a skill/agent here — or moving one from `agents/` to a skill folder — leaves the old copy installed in the target, where it goes on competing for the same triggers with stale instructions. Delete the orphan by hand after renaming.
 
 Destinations, if you'd rather do it by hand: skill folder → `<target>/skills/<skill-name>/`, agent file → `<target>/agents/<name>.md`.

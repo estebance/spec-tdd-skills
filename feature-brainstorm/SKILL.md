@@ -1,14 +1,14 @@
 ---
 name: feature-brainstorm
 description: >
-  Facilitates open-ended feature brainstorming before any spec, RFC, or implementation plan gets written. Use this whenever the user wants to brainstorm features, generate product ideas, explore possible solutions to a problem, or is describing a pain point / goal / user complaint without yet knowing what to build — even if they never say the word "brainstorm". Trigger on phrases like "what could we build for X", "let's think of some ideas", "users keep complaining about Y, what should we do", "I want to improve Z but don't know how", or "give me some options before we commit to anything". Also trigger proactively when a user jumps straight into describing implementation details for a problem that hasn't actually been explored yet — pump the brakes and widen the net before narrowing. This skill deliberately stays conversational and idea-focused: it does NOT write specs, RFCs, or plans (hand off to a spec-writing skill like rfc-writer once a direction is chosen).
+  Facilitates open-ended feature brainstorming before any spec, RFC, or implementation plan gets written. Use this whenever the user wants to brainstorm features, generate product ideas, explore possible solutions to a problem, or is describing a pain point / goal / user complaint without yet knowing what to build — even if they never say the word "brainstorm". Trigger on phrases like "what could we build for X", "let's think of some ideas", "users keep complaining about Y, what should we do", "I want to improve Z but don't know how", or "give me some options before we commit to anything". Also trigger proactively when a user jumps straight into describing implementation details for a problem or feature that hasn't actually been explored yet — pump the brakes and widen the net before narrowing. This skill deliberately stays conversational and idea-focused: it does NOT write specs, RFCs, plans, or any file. Its only output is a "brainstorm brief" posted in the chat once a direction is chosen — problem, direction and why it won, alternatives rejected and why, constraints, open questions — structured to feed a spec-writing skill like rfc-writer, which is where the handoff goes next.
 ---
 
 # Feature Brainstorm
 
 Help the user explore the space of possible features or solutions before anything gets locked into a spec. The value you add here isn't a clever idea — it's making sure a wide enough net gets cast before anyone commits to one. Most premature specs fail not because the writing was bad, but because the first idea that came to mind got specced instead of the best one.
 
-Stay conversational. Never produce a written deliverable (no files, no markdown doc, no RFC) — the output of this skill is a sharper shared understanding in the chat, not an artifact. If the user wants a doc, that's the next skill's job, not this one.
+Stay conversational, and never write a file — no markdown doc, no RFC, nothing on disk. That's the next skill's job. But the session does have an output: it ends with a **brainstorm brief** posted in the chat (see [step 4](#4-close-with-a-brainstorm-brief)) — a structured recap of the direction chosen and, just as importantly, everything the exploration turned up along the way. Without it, the reasoning that made the session worth having stays buried in scrollback and the spec-writing step starts its interview from zero.
 
 ## The shape of a good session: diverge, then converge
 
@@ -41,9 +41,31 @@ Once narrowing starts:
 - Surface the real tradeoffs between the top contenders — effort vs. impact, risk, what it forecloses later — rather than just restating each idea.
 - It's fine to have an opinion about which is strongest, but say why, and let the user make the call.
 
-### 4. Know when you're done
+### 4. Close with a brainstorm brief
 
-The session is done when the user has a direction they want to pursue, even a rough one — not when every idea has been exhaustively debated. At that point, name what they've landed on in one sentence and ask if they want to keep exploring or move on. If they're ready to move on and the project uses a spec-writing workflow (e.g. an `rfc-writer`-style skill, or a `specs/` directory), suggest handing off to it — but don't write the spec yourself here, and don't assume that workflow exists if you haven't seen evidence of it in the project.
+The session is done when the user has a direction they want to pursue, even a rough one — not when every idea has been exhaustively debated. At that point, stop generating and post the brief:
+
+```markdown
+## Brainstorm brief: <direction, as a short noun phrase>
+
+**Problem** — who's affected and what's going wrong for them.
+**Direction chosen** — what it is in one or two sentences, and why it won over the others.
+**Alternatives considered** — 2–4 lines, each `<idea> → <why it lost>`. Include the ones ruled out by constraint, not just the ones that lost on merit.
+**Constraints** — platform, timeline, team, existing-system limits that came up. These are what make the direction the right one; a spec written without them will drift.
+**Open questions** — what's genuinely unresolved and needs an answer before or during implementation.
+**Done looks like** — rough signals that it worked. Directional, not testable criteria yet.
+```
+
+Then ask whether they want to keep exploring or move on.
+
+Rules for the brief:
+
+- **Only what the session actually produced.** Every line traces back to something said in the conversation. Never invent a plausible-sounding constraint or acceptance signal to fill out the shape — a spec built on a fabricated constraint is worse than one built on none.
+- **Drop a section that's empty** rather than leaving a placeholder in it; a four-section brief from a short session is fine. The one exception is **Constraints**, where "none surfaced" is worth stating explicitly — it tells the spec writer the space is open rather than unexplored.
+- **Alternatives are the highest-value part.** They're the one thing a spec writer can't reconstruct, and they're what stops a rejected idea from being re-litigated three weeks later. Don't compress them away to keep the brief short.
+- **Stay above implementation.** No file paths, no schemas, no task breakdown — the brief says what and why, and leaves how to the spec and plan.
+
+The brief is written to hand off: **Problem** seeds the RFC's *Problem*, **Direction chosen** its *Proposed Solution*, **Open questions** its *Open Questions*, and **Done looks like** the raw material for *Acceptance Criteria* — so the spec-writing step can skip re-asking what the session already settled and interview only for what's missing. If the project uses a spec-writing workflow (an `rfc-writer`-style skill, or a `specs/` directory), offer to hand off to it once the brief is posted — but don't write the spec yourself here, and don't assume that workflow exists if you haven't seen evidence of it in the project.
 
 ## Things to avoid
 
@@ -53,4 +75,6 @@ The session is done when the user has a direction they want to pursue, even a ro
 
 **Don't turn this into an interview marathon.** A handful of grounding questions is enough. If you find yourself asking five questions before offering a single idea, you've overcorrected — brainstorming should feel generative quickly, not like a discovery workshop.
 
-**Don't write anything down as a deliverable.** If the user asks you to save the list, a plain recap in the chat is fine, but resist creating a formal doc — that's a signal the session is actually done and it's time to hand off to a spec-writing step.
+**Don't create files.** The brainstorm brief lives in the chat. If the user asks you to save it, that's the signal the session is done and it's time to hand off to a spec-writing step — the RFC is where this belongs on disk, and writing a second doc alongside it just creates two things to keep in sync.
+
+**Don't post the brief early.** It's the closing move, not a running summary. Writing it while the user is still generating options reads as a verdict and shuts down divergence — the exact failure mode step 2 exists to prevent. Wait until they've actually landed on a direction.

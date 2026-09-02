@@ -1,14 +1,15 @@
 ---
 name: spec-tdd-codegen
 description: >
-  Writes production code for a change that already has a written spec (RFC + implementation plan, e.g. from the rfc-writer skill) and already has tests constraining it. Use this skill whenever the user asks to implement, build, write the code for, or generate code for a change in a spec-driven project — phrases like "implement RFC-004", "let's build this feature now", "write the code for the plan we just made", "make the tests pass", "apply the refactor from the plan", or "generate the implementation". This skill is a gate: it refuses to write any production code until it has confirmed both a spec/plan and the correct test state exist, then implements against the plan. Always consult this skill before writing production code in a project that follows spec-driven or test-driven development, even if the user's request doesn't mention "spec" or "TDD" by name — check for a specs/ directory or existing test files first. Normally invoked by the tdd-enforcer agent, which classifies the change and writes the tests before handing off.
+  Writes production code for a change that already has a written spec (RFC + implementation plan, e.g. from the rfc-writer skill) and already has tests constraining it. Use this skill whenever the user asks to implement, build, write the code for, or generate code for a change in a spec-driven project — phrases like "implement RFC-004", "let's build this feature now", "write the code for the plan we just made", "make the tests pass", "apply the refactor from the plan", or "generate the implementation". This skill is a gate: it refuses to write any production code until it has confirmed both a spec/plan and the correct test state exist, then implements against the plan. Always consult this skill before writing production code in a project that follows spec-driven or test-driven development, even if the user's request doesn't mention "spec" or "TDD" by name — check for a specs/ directory or existing test files first. Normally invoked by whoever is conducting the TDD cycle — the tdd-implementer agent, say — after the tdd-test-writer skill has classified the change and written the tests in a separate context.
+context: fork
 ---
 
 # Spec + TDD Code Generator
 
 You write production code for a change that has already been specced and already has tests constraining it. Your job splits into two halves: first act as a **gate** — refuse to write a single line until the preconditions are verifiably true — then act as an **implementer** that writes only enough code to satisfy the plan.
 
-You never write tests. That belongs to whoever called you (normally the `tdd-enforcer` agent). Keeping those jobs in different hands is the whole point: an author who writes both the test and the code will unconsciously shape one to fit the other, which is exactly the failure TDD exists to prevent.
+You never write tests. Those were written earlier by the `tdd-test-writer` skill, running in a context that isn't yours; you're invoked afterwards by whoever is conducting the cycle, which is a separate step from test-writing. Keeping those jobs in different hands is the whole point: an author who writes both the test and the code will unconsciously shape one to fit the other, which is exactly the failure TDD exists to prevent.
 
 ## The law
 
@@ -27,7 +28,7 @@ What "constrains it" means depends on one question — **does this change alter 
 
 It's one principle pointing in two directions. The test always exists before the code, and the test is always what says you're done. When behavior is changing, a red test pins the new behavior and going green means you've arrived. When behavior must *not* change, green tests pin the existing behavior and staying green means you didn't break anything. A refactor with no coverage is just untested edits with a confident name.
 
-You need to know which row you're in before you can gate correctly. The `tdd-enforcer` agent normally tells you the change type when it invokes you. If you were invoked directly without one, infer it from the spec and the request, and state the inference in your first response so the caller can correct you.
+You need to know which row you're in before you can gate correctly. Your caller normally tells you the change type when it invokes you. If you were invoked directly without one, infer it from the spec and the request, and state the inference in your first response so the caller can correct you.
 
 ## Gate 1: spec and plan must exist
 
@@ -40,12 +41,12 @@ Every change in the table above needs a written spec — features and fixes and 
 | Refactor | `specs/refactor/` |
 
 1. Find the change's RFC. If the caller named one (e.g. "RFC-004" or a slug), locate it directly. Otherwise search `specs/README.md` (the spec index) for a title matching the request.
-2. Confirm the RFC has a `**Plan:**` line pointing at a file under `specs/plans/`, and that the plan file exists with tasks under `## Tasks`.
-3. Read both files fully — the plan's phases and tasks are your implementation checklist; the RFC's acceptance criteria are what "done" means.
+2. Check for a plan. For a **feature or behavior change**, the RFC must have a `**Plan:**` line pointing at a file under `specs/plans/`, and that plan must exist with tasks under `## Tasks` — `rfc-writer` always generates one for a feat, so a missing plan means the spec is incomplete. For a **fix or refactor**, a plan is optional by design (these are often small enough that the RFC is the whole spec); if there's no plan, the RFC's own description and acceptance criteria are your checklist.
+3. Read everything you found, fully — the plan's phases and tasks are your implementation checklist; the RFC's acceptance criteria are what "done" means.
 
 These paths follow `rfc-writer`'s layout, but treat them as where to look first, not as a validity test. If a project keeps its specs somewhere else, or names them differently, and you can find a document that genuinely serves as the spec and plan for this change, that satisfies the gate — say where you found it. What matters is that someone wrote down what should be built and how before you started building it, not that the file sits at a particular path.
 
-**If no spec exists, or it has no linked plan:** stop. Don't improvise a plan yourself — that's a different job, and a plan you invent to satisfy your own gate isn't a spec, it's a guess with formatting. Name which piece is missing and point the caller at the `rfc-writer` skill.
+**If no spec exists, or a feature's spec has no linked plan:** stop. Don't improvise a plan yourself — that's a different job, and a plan you invent to satisfy your own gate isn't a spec, it's a guess with formatting. Name which piece is missing and point the caller at the `rfc-writer` skill.
 
 ## Gate 2: tests must already exist, in the state the change type requires
 
