@@ -6,6 +6,8 @@ This repo is a source/authoring location for Claude Code skills and agents (see 
 
 When the user asks to implement, build, ship, or apply a change that has a spec under `specs/`, spawn the `tdd-implementer` agent via the Agent tool. Do **not** invoke `tdd-test-writer` or `spec-tdd-codegen` directly from the main session — `tdd-implementer` owns their ordering, and the whole point of the agent is that the test author and the code author never share a context.
 
+When the user asks to review, audit, or verify a change against its spec — or asks whether what got built is what was specced — spawn the `spec-conformance-reviewer` agent via the Agent tool. It has to be a separate context from whoever wrote the code, for the same reason the test author is: an author reviewing their own work confirms their intent rather than checking it.
+
 This paragraph is load-bearing, not documentation. Claude Code sessions are frequently given a system-prompt instruction not to use the Agent tool "unless the user, a CLAUDE.md file, or a skill asks for it" — a CLAUDE.md asking for it is one of the three sanctioned ways to authorize the delegation, so removing this section will silently stop the agent from being spawned. The same stanza has to be copied into any repo where this harness is used; `README.md` carries a paste-ready copy.
 
 ## Conventions
