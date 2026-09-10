@@ -18,12 +18,12 @@ feature-brainstorm  →  rfc-writer  →  tdd-implementer  →  spec-conformance
 
 - **feature-brainstorm** (skill) — open-ended exploration of a problem or idea before anything gets specced. Stays conversational and writes no files, but closes with a *brainstorm brief* in the chat (direction chosen, alternatives rejected and why, constraints, open questions) whose sections line up with the fields `rfc-writer` interviews for.
 - **rfc-writer** (skill) — turns a chosen direction into a written RFC under `specs/`, plus a linked implementation plan for feature work.
-- **tdd-implementer** (agent) — the entry point for building anything that's been specced. Finds the spec, gets the constraining tests written in a context that isn't its own, implements against the plan, and lands it green with a refactor pass. It owns the sequence, not any single beat of it.
+- **tdd-implementer** (skill, `context: fork`) — the entry point for building anything that's been specced. Finds the spec, gets the constraining tests written in a context that isn't its own, implements against the plan, and lands it green with a refactor pass. It owns the sequence, not any single beat of it.
 - **tdd-test-writer** (skill) — classifies the change, confirms the spec exists, and writes the failing (or characterization) test that will constrain the implementation, then reports back. Belongs in a context separate from the one writing the code — usually a `general-purpose` subagent, spawned by `tdd-implementer` or directly by Claude.
 - **spec-tdd-codegen** (skill) — gated implementation: refuses to write code until a spec exists (from `rfc-writer`) and the tests are in the right state, then implements just enough to satisfy the plan.
 - **spec-conformance-reviewer** (agent) — reads the RFC, the plan and the diff, and reports whether the change actually delivers the specced feature: acceptance criteria not met, critical bugs (each with a concrete failure path), work built beyond the plan, and defects in the spec itself. Runs on `fable` and holds no `Write`/`Edit` — it reports, and the report routes each finding to `code` or `spec` so it can be fed back into a TDD cycle or an `rfc-writer` pass. Deliberately declines style, naming and formatting findings; those are the developer's and the linter's. It's both a user entry point ("did we build what RFC-004 asked for?") and `tdd-implementer`'s final step.
 
-The two implementation skills stay caller-agnostic in their *mechanics* — either can be invoked on its own, or from a subagent Claude spawns itself — but their descriptions deliberately do **not** advertise the entry-point phrases ("implement RFC-004", "build this feature"). Those route to `tdd-implementer`, which then calls the skills in order. Without that split the skills win the trigger on a tie (a skill loads in-context, with no agent spawn), and the agent that exists to enforce the ordering never gets spawned at all.
+The two implementation skills stay caller-agnostic in their *mechanics* — either can be invoked on its own, or from a subagent Claude spawns itself — but their descriptions deliberately do **not** advertise the entry-point phrases ("implement RFC-004", "build this feature"). Those route to `tdd-implementer`, which then calls the skills in order. Without that split, an "implement X" request could match `tdd-test-writer` or `spec-tdd-codegen` directly, and the skill that exists to enforce the ordering — `tdd-implementer` — never gets triggered at all.
 
 ## Layout
 
@@ -50,17 +50,12 @@ Destinations, if you'd rather do it by hand: skill folder → `<target>/skills/<
 
 ## One more step per project: authorize the delegation
 
-Installing the files is not enough to get `tdd-implementer` spawned. Claude Code sessions are frequently given a system-prompt instruction not to use the Agent tool *"unless the user, a CLAUDE.md file, or a skill asks for it"* — so unless something asks, Claude does the work itself in the main context and the agent sits unused. A `CLAUDE.md` asking for it is one of the three sanctioned ways to authorize it, and it's the only one that doesn't require re-typing the request every session.
+Installing the files is not enough to get `spec-conformance-reviewer` spawned. Claude Code sessions are frequently given a system-prompt instruction not to use the Agent tool *"unless the user, a CLAUDE.md file, or a skill asks for it"* — so unless something asks, Claude does the work itself in the main context and the agent sits unused. A `CLAUDE.md` asking for it is one of the three sanctioned ways to authorize it, and it's the only one that doesn't require re-typing the request every session.
 
 Paste this into the `CLAUDE.md` of any repo where you want the workflow to route itself:
 
 ```markdown
 ## Delegation
-
-When I ask to implement, build, ship, or apply a change that has a spec under `specs/`,
-spawn the `tdd-implementer` agent via the Agent tool. Do not invoke `tdd-test-writer` or
-`spec-tdd-codegen` directly from the main session — `tdd-implementer` owns their ordering,
-and the point of the agent is that the test author and the code author never share a context.
 
 When I ask to review, audit, or verify a change against its spec, spawn the
 `spec-conformance-reviewer` agent via the Agent tool. It has to run in a context separate
@@ -68,4 +63,4 @@ from whoever wrote the code — an author reviewing their own work confirms thei
 rather than checking it.
 ```
 
-Skills don't need this — they're invoked from the main context and aren't covered by the restriction. It's only agent spawning that has to be asked for.
+Skills don't need this — they're invoked from the main context and aren't covered by the restriction. It's only agent spawning that has to be asked for. `tdd-implementer` is a skill, not an agent, so it needs no entry here — it routes from its own description like `rfc-writer` or `feature-brainstorm` do.

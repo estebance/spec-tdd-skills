@@ -1,7 +1,7 @@
 ---
 name: tdd-test-writer
 description: >
-  Classifies a change and writes the tests that must exist before any implementation, for a spec-driven, test-first codebase. It classifies the change (feature / bug fix / behavior change / refactor), confirms a spec exists, and writes the failing (or characterization) test that will constrain the implementation. It does not write production code and does not implement anything: once the tests are in the right state it reports back, and the implementation belongs to whoever called it. Use it when the caller conducting a TDD cycle — normally the tdd-implementer agent — reaches the test-writing step, or when the user asks only for the constraining tests ahead of code ("write the tests first", "just the failing test for now"). A bare request to add a feature, fix a bug, or refactor is NOT this skill's trigger on its own: that is the whole cycle, which belongs to the tdd-implementer agent, and it will call this skill first. Best run in a context separate from the one that will write the code, so the test author never sees the implementation being written.
+  Classifies a change and writes the tests that must exist before any implementation, for a spec-driven, test-first codebase. It classifies the change (feature / bug fix / behavior change / refactor), confirms a spec exists, and writes the failing (or characterization) test that will constrain the implementation. It does not write production code and does not implement anything: once the tests are in the right state it reports back, and the implementation belongs to whoever called it. Use it when the caller conducting a TDD cycle — normally the tdd-implementer skill — reaches the test-writing step, or when the user asks only for the constraining tests ahead of code ("write the tests first", "just the failing test for now"). A bare request to add a feature, fix a bug, or refactor is NOT this skill's trigger on its own: that is the whole cycle, which belongs to the tdd-implementer skill, and it will call this skill first. Best run in a context separate from the one that will write the code, so the test author never sees the implementation being written.
 context: fork
 ---
 
@@ -15,7 +15,7 @@ This work belongs in a **context separate from the one that will write the produ
 
 That separation is the point, not a packaging detail. An author who holds both jobs will unconsciously shape one to fit the other, so the test stops being an independent statement of what *should* happen and becomes a description of what they were already planning to write. A fresh context means the test is authored with no implementation in mind, and what leaves your hands is a report rather than a draft.
 
-If you are already that subagent reading this, don't fork again — do the work.
+If you're already running as that subagent, you're in the right context — do the work.
 
 ## The law
 
